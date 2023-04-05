@@ -1,15 +1,25 @@
 {
   "name": "hi-elysia",
   "version": "1.0.28",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "bun run --hot src/index.ts"
-  },
+  "module": "src/main.js",
   "dependencies": {
-    "elysia": "latest"
+    "@elysiajs/graphql-yoga": "^0.4.0",
+    "@graphql-tools/utils": "^9.2.1",
+    "@neo4j/graphql": "^3.17.2",
+    "elysia": "0.4.3",
+    "graphql": "^16.6.0",
+    "graphql-tag": "^2.12.6",
+    "graphql-yoga": "^3.8.0",
+    "neo4j-driver": "^5.6.0"
   },
   "devDependencies": {
-    "bun-types": "latest"
+    "bun-types": "^0.5.8"
   },
-  "module": "src/index.js"
+  "resolutions": {
+    "graphql": "16.6.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "DEBUG=neo4j-driver,@neo4j/graphql:*,elysia,@elysiajs/graphql-yoga bun run --hot src/main.ts"
+  }
 }

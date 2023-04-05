@@ -1,0 +1,107 @@
+version: '3'
+
+# Custom top-level network
+networks:
+  neo4j-internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.57.0/24
+
+services:
+  # Fix Ownership of Build Directory
+  # Thanks to Bug in Docker itself
+  # We need to use steps like this
+  # Because by default, the volume directory
+  # Is owned by Root
+  # So this helps correct it
+  change-vol-ownership:
+    # We can use any image we want as long as we can chown
+    # image: ubuntu
+    image: alpine:latest
+    # Need a user priviliged enough to chown
+    user: "root"
+    # Specify the group in question
+    group_add:
+      - '7474'
+    volumes:
+      # The volume to chown
+      - /data/neo4j/data:/var/lib/neo4j/data
+      - /data/neo4j/seed-files:/var/lib/neo4j/import
+      - /data/neo4j/logs:/var/lib/neo4j/logs
+      - /data/neo4j/plugins:/var/lib/neo4j/plugins
+      - /data/neo4j/certificates:/var/lib/neo4j/certificates
+    command: "chown -R 7474:7474 /var/lib/neo4j/certificates /var/lib/neo4j/data /var/lib/neo4j/import /var/lib/neo4j/logs /var/lib/neo4j/plugins"
+
+  neo4j:
+    # Thanks to Ownership issues on Docker    
+    # We need to first setup the volumes correctly
+    # And then execute build
+    # So that build is owned by our current user
+    # Rather than root as it is by default
+    depends_on:
+      change-vol-ownership:
+        # Wait for the ownership to change
+        condition: service_completed_successfully
+    user: 7474:7474 # ${MY_UID}:${MY_GID}
+    container_name: neo4j
+    restart: always
+    image: neo4j:5.5.0-community@sha256:fa9ed6ececd003c4ea80104b4b200150141f34303cff74ee1289988a57e8f30d
+    hostname: neo4j
+    ports:
+      - "7474:7474"
+      - "7473:7473"
+      - "7687:7687"
+    #command: printenv
+    volumes:
+      - /data/neo4j/data:/var/lib/neo4j/data
+      - /data/neo4j/seed-files:/var/lib/neo4j/import
+      - /data/neo4j/logs:/var/lib/neo4j/logs
+      - /data/neo4j/plugins:/var/lib/neo4j/plugins
+      - /data/neo4j/certificates:/var/lib/neo4j/certificates
+      - type: bind
+        source: ./neo4j/plugins/apoc-5.5.0-core.jar
+        target: /var/lib/neo4j/plugins/apoc-5.5.0-core.jar
+      - type: bind
+        source: ./neo4j/plugins/apoc-5.5.0-extended.jar
+        target: /var/lib/neo4j/plugins/apoc-5.5.0-extended.jar
+      - type: bind
+        source: ./neo4j/plugins/ojdbc10.jar
+        target: /var/lib/neo4j/plugins/ojdbc10.jar
+    # Neo4j-specific environment variables
+    env_file:
+      - ./neo4j/.env.conf
+    networks:
+      neo4j-internal:
+        aliases:
+          - neo4j
+
+  # api:
+  #   container_name: api # Tell docker this container depends on the neo service so they can communicate, the neo4j server will be located at neo:7474
+  #   depends_on:
+  #     - neo4j
+  #   build:
+  #     context: .
+  #     # target: development
+  #   volumes:
+  #     - .:/app
+  #     - /app/dist
+  #     - /app/node_modules
+  #   ports:
+  #     - 3000:3000
+  #   command: bun run dev
+  #   env_file:
+  #     - .env
+  #   # networks: ["Neo4j-test"]
+  #   # Tell docker this container depends on the neo service so they can communicate, the neo4j server will be located at neo:7474
+  #   networks:
+  #     neo4j-internal:
+  #       aliases:
+  #         - api
+
+# volumes:
+#     data: 
+#     seed-files: 
+#     logs: 
+#     plugins: 
+#     certificates: 
